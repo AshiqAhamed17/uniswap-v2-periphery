@@ -107,14 +107,49 @@ library UniswapV2Library {
     }
 
     // performs chained getAmountIn calculations on any number of pairs
+    // getAmountsIn calculates the minimum input amount required to receive a specific output amount through a series of token pairs.
+    // Output:An array storing how much input is needed at each step.
     function getAmountsIn(
-        address factory,
-        uint amountOut,
-        address[] memory path
-    ) internal view returns (uint[] memory amounts) {
+        address factory,// Uniswap factory address (used to get reserves)
+        uint amountOut, // The desired output amount (final token amount)
+        address[] memory path // Token swap path (e.g., [TokenA, TokenB, TokenC])
+    ) internal view returns (uint[] memory amounts) { // Output: An array storing how much input is needed at each step.
+
+/**
+ * Example:
+* - You want 1 ETH.
+ * - You only have MKR (so you'll swap MKR → DAI → ETH).
+ * - The function will calculate how much MKR is needed.
+ *
+ * Swap path:
+ * path = [MKR, DAI, ETH];  // MKR → DAI → ETH
+ *
+ * Step-by-step breakdown:
+ *
+ * 1️⃣ Start with the output amount:
+ *    - amounts = [0, 0, 1];  // We need 1 ETH.
+ *
+ * 2️⃣ First loop iteration (i = 2, ETH ← DAI):
+ *    - How much DAI is needed for 1 ETH?
+ *    - getAmountIn(1 ETH, reserve_DAI, reserve_ETH)
+ *    - Assume we need 102 DAI.
+ *    - Now: amounts = [0, 102, 1];  // 102 DAI is required to get 1 ETH.
+ *
+ * 3️⃣ Second loop iteration (i = 1, DAI ← MKR):
+ *    - How much MKR is needed for 102 DAI?
+ *    - getAmountIn(102 DAI, reserve_MKR, reserve_DAI)
+ *    - Assume we need 5.3 MKR.
+ *    - Now: amounts = [5.3, 102, 1];  // 5.3 MKR is required to get 102 DAI, which gets us 1 ETH.
+ *
+ * Final Result:
+ * To get 1 ETH, you need:
+ * - Swap 5.3 MKR → 102 DAI
+ * - Swap 102 DAI → 1 ETH
+*/
+
         require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
         amounts = new uint[](path.length);
-        amounts[amounts.length - 1] = amountOut;
+        amounts[amounts.length - 1] = amountOut; // Last element is the desired output amount
         for (uint i = path.length - 1; i > 0; i--) {
             (uint reserveIn, uint reserveOut) = getReserves(factory, path[i - 1], path[i]);
             amounts[i - 1] = getAmountIn(amounts[i], reserveIn, reserveOut);
