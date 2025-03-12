@@ -297,20 +297,28 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     }
 
     function swapTokensForExactTokens(
-        uint amountOut,
-        uint amountInMax,
-        address[] calldata path,
-        address to,
-        uint deadline
+        uint amountOut, // The exact amount of output tokens the user wants to receive
+        uint amountInMax, // The maximum amount of input tokens the user is willing to spend
+        address[] calldata path, // Array of token addresses representing the swap path
+        address to, // The address that will receive the final output tokens
+        uint deadline // The timestamp after which this transaction will revert
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
+        // Calculate the required input amounts for each step of the swap path
+        // to achieve the exact amountOut
         amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
+
+        // Ensure the calculated input amount doesn't exceed the user's maximum
         require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
+
+        // Transfer the required input tokens from the user to the first pair
         TransferHelper.safeTransferFrom(
-            path[0],
-            msg.sender,
-            UniswapV2Library.pairFor(factory, path[0], path[1]),
-            amounts[0]
+            path[0], // The input token address
+            msg.sender, // The user's address
+            UniswapV2Library.pairFor(factory, path[0], path[1]), // The address of the first pair
+            amounts[0] // The calculated input amount
         );
+
+        // Execute the swap through the entire path
         _swap(amounts, path, to);
     }
 
